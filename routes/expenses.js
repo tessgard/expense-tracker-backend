@@ -71,6 +71,8 @@ router.post(
 router.put('/:id', auth, async (req, res) => {
   const { name, amount, category, note } = req.body;
 
+  // build an expense object
+
   const expenseFields = {};
   if (name) expenseFields.name = name;
   if (amount) expenseFields.amount = amount;
@@ -82,7 +84,7 @@ router.put('/:id', auth, async (req, res) => {
     if (!expense) return res.status(404).json({ msg: 'expense not found' });
 
     if (expense.user.toString() !== req.user.id) {
-      return res.status(400), json({ msg: 'not authorised' });
+      return res.status(401), json({ msg: 'not authorised' });
     }
 
     expense = await Expense.findByIdAndUpdate(
@@ -94,6 +96,7 @@ router.put('/:id', auth, async (req, res) => {
         new: true
       }
     );
+    res.json(expense);
   } catch (err) {
     console.error(err.message);
     res.status(500).send('server error');
@@ -103,8 +106,22 @@ router.put('/:id', auth, async (req, res) => {
 // @route         DELETE api/expenses/:id
 // @description   Update expense
 // @access        Private
-router.delete('/:id', (req, res) => {
-  res.send('delete expense');
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    let expense = await Expense.findById(req.params.id);
+    if (!expense) return res.status(404).json({ msg: 'expense not found' });
+
+    if (expense.user.toString() !== req.user.id) {
+      return res.status(401), json({ msg: 'not authorised' });
+    }
+
+    await Expense.findByIdAndRemove(req.params.id);
+
+    res.json({ msg: 'expense deleted' });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('server error');
+  }
 });
 
 module.exports = router;
